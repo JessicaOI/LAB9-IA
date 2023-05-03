@@ -1,61 +1,83 @@
-import numpy as np
 import gym
+from gym.envs.toy_text.frozen_lake import generate_random_map
+import numpy as np
+import random
 
-env = gym.make("FrozenLake-v1", is_slippery=True)
+iterations = 300
+stepsIteration = []
+iterations_since_success = 0
+wins = 0
 
-#implementar el algoritmo Q-learning
 
-# Hiperparámetros
-alpha = 0.1
-gamma = 0.99
-epsilon = 1.0
-epsilon_decay = 0.999
-episodes = 5000
+def create_custom_env(slippery=True):
+    custom_map = generate_random_map(size=4)
+    return gym.make("FrozenLake-v1", render_mode="human", desc=custom_map, is_slippery=slippery)
 
-# Inicializar la tabla Q
+env = create_custom_env(slippery=True)
 q_table = np.zeros([env.observation_space.n, env.action_space.n])
 
-for episode in range(episodes):
-    state = env.reset()
-    done = False
-    
-    while not done:
-        # Selección de acción (política epsilon-greedy)
-        if np.random.random() < epsilon:
+
+#El factor de aprendizaje (alpha) y el factor de descuento (gamma) determinan cómo el agente actualiza la tabla q
+alpha = 0.8
+gamma = 0.95
+
+#El valor de epsilon determina la probabilidad de que el agente tome una acción aleatoria
+epsilon = 1.0
+#Entre mas itere llegara a un epsilon mas bajo para reducir su aleatoridad
+min_epsilon = 0.01
+decay_epsilon = 0.995
+
+for n in range(iterations):
+    print(f"Iteración no. {n + 1}")
+    iterations_since_success += 1
+
+    state = env.reset()[0]
+
+
+    for i in range(100):
+        if random.uniform(0, 1) < epsilon:
             action = env.action_space.sample()
         else:
             action = np.argmax(q_table[state])
 
-        # Tomar acción y observar resultado
-        result = env.step(action)
-        next_state, reward, done, _ = result[0], result[1], result[2], result[3]
+        step_result = env.step(action)
 
-        # Convertir state y action a enteros
-        state = int(state)
-        action = int(action)
+        next_state = step_result[0]
+        reward = step_result[1]
+        done = step_result[2]
 
-        # Actualizar la tabla Q
-        q_value = q_table[state, action]
-        next_q_value = np.max(q_table[next_state])
-        new_q_value = q_value + alpha * (reward + gamma * next_q_value - q_value)
-        q_table[state, action] = new_q_value
+        # print("state:", state)
+        # print("next_state:", next_state)
+        # print("action:", action)
 
-        # Actualizar el estado
+
+        #Aquí, el agente actualiza su conocimiento en la tabla q utilizando la ecuación de actualización de Q-learning. La actualización considera tanto las recompensas inmediatas como las futuras.
+        q_table[state, action] = q_table[state, action] + alpha * (reward + gamma * np.max(q_table[next_state, :]) - q_table[state, action])
+
         state = next_state
+        env.render()
 
-    # Reducción de epsilon para exploración y explotación equilibradas
-    epsilon *= epsilon_decay
+        print(f"Movimiento numero: {i + 1}")
 
+        if reward > 0:
+            print("Ganó\n")
+            wins += 1
+            stepsIteration.append(iterations_since_success)
+            iterations_since_success = 0
+            env = create_custom_env()
+            q_table = np.zeros([env.observation_space.n, env.action_space.n])
+            break
 
+        if done:
+            print("Fin del juego\n")
+            break
 
+    #Esta parte del código decae el valor de epsilon después de cada iteración, lo que reduce gradualmente la proporción de acciones de exploración a lo largo del tiempo, permitiendo que el agente utilice más su conocimiento acumulado para tomar decisiones.
+    if epsilon > min_epsilon:
+        epsilon *= decay_epsilon
 
-#probar el agente entrenado
+print(f"Número de victorias: {wins}")
+for x in range(len(stepsIteration)):
+    print(f"{x + 1}: {stepsIteration[x]}")
 
-state = env.reset()
-done = False
-env.render()
-
-while not done:
-    action = np.argmax(q_table[state])
-    state, _, done, _ = env.step(action)
-    env.render()
+env.close()
