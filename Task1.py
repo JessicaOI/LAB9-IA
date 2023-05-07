@@ -64,17 +64,27 @@ for n in range(iterations):
             wins += 1
             stepsIteration.append(iterations_since_success)
             iterations_since_success = 0
+
+            # Cambiar de mapa sin reiniciar la q-table
             env = create_custom_env()
-            q_table = np.zeros([env.observation_space.n, env.action_space.n])
+
             break
 
         if done:
             print("Fin del juego\n")
             break
 
-    #Esta parte del código decae el valor de epsilon después de cada iteración, lo que reduce gradualmente la proporción de acciones de exploración a lo largo del tiempo, permitiendo que el agente utilice más su conocimiento acumulado para tomar decisiones.
+        # Imprimir la q-table en cada iteración
+    print("Q-table en la iteración actual:")
+    print(q_table)
+
     if epsilon > min_epsilon:
         epsilon *= decay_epsilon
+
+# Imprimir la q-table final
+print("\nQ-table final después de todas las iteraciones:")
+print(q_table)
+
 
 print(f"Número de victorias: {wins}")
 for x in range(len(stepsIteration)):
